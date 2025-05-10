@@ -33,7 +33,11 @@ export const useTrackingStore = defineStore('tracking', () => {
   }
 
   function orderData(name) {
-    trackedValues.value[name].data = trackedValues.value[name].data.sort((a, b) => new Date(b.date) - new Date(a.date))
+    trackedValues.value[name].data = trackedValues.value[name].data.sort((a, b) => new Date(a.date) - new Date(b.date))
+  }
+
+  function getDataDesc(name) {
+    return trackedValues.value[name].data.sort((a, b) => new Date(b.date) - new Date(a.date))
   }
 
   function deleteValue(name) {
@@ -68,6 +72,7 @@ export const useTrackingStore = defineStore('tracking', () => {
     addValue,
     addDataPoint,
     deleteValue,
-    deleteValueData
+    deleteValueData,
+    getDataDesc
   }
 })

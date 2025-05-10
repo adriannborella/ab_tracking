@@ -84,7 +84,7 @@
 
         <ul v-if="selectedId && trackedValues[selectedId]">
             <li
-              v-for="{date, value} in trackedValues[selectedId].data"
+              v-for="{date, value} in store.getDataDesc(selectedId)"
               :key="date"
               class="bg-white rounded-2xl shadow p-4 mb-2 flex">
                 <h2 class="text-lg font-semibold mb-2 flex-2">{{ new Date(date).toLocaleDateString('es-AR') }} - {{ value }}</h2>
