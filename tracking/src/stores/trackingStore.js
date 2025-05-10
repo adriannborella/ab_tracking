@@ -14,15 +14,41 @@ export const useTrackingStore = defineStore('tracking', () => {
 
   function addDataPoint(name, date, value) {
     if (trackedValues.value[name]) {
-      trackedValues.value[name].data.push({ date, value })
+        // Verifica si la fecha ya existe
+        const existingDataPoint = trackedValues.value[name].data.find(
+            (dataPoint) => dataPoint.date === date
+        )
+        // Si existe, actualiza el valor
+        if (existingDataPoint) {
+            existingDataPoint.value = value
+        } else {
+            // Si no existe, agrega un nuevo punto de datos
+            trackedValues.value[name].data.push({ date, value })
+        }
+        // ordenar los puntos de datos por fecha
+        orderData(name)
     } else {
       console.warn(`Name "${name}" does not exist in trackedValues.`)
     }    
   }
 
+  function orderData(name) {
+    trackedValues.value[name].data = trackedValues.value[name].data.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }
+
   function deleteValue(name) {
     if (trackedValues.value[name]) {
       delete trackedValues.value[name]
+    } else {
+      console.warn(`Name "${name}" does not exist in trackedValues.`)
+    }
+  }
+
+  function deleteValueData(name, date) {
+    if (trackedValues.value[name]) {      
+        trackedValues.value[name].data = trackedValues.value[name].data.filter(
+          (dataPoint) => dataPoint.date !== date
+        )      
     } else {
       console.warn(`Name "${name}" does not exist in trackedValues.`)
     }
@@ -41,6 +67,7 @@ export const useTrackingStore = defineStore('tracking', () => {
     trackedValues,
     addValue,
     addDataPoint,
-    deleteValue
+    deleteValue,
+    deleteValueData
   }
 })

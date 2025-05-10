@@ -26,7 +26,7 @@ onMounted(async () => {
                 label: 'Progreso',
                 data: props.dataPoints.map((dp) => dp.value),
                 fill: true,
-                borderColor: '#3b82f6',
+                borderColor: 'blue',
                 tension: 0.4,                
                 borderWidth: 1,
             },

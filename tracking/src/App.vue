@@ -17,7 +17,7 @@
       </div>
       <div class="flex justify-around fixed bottom-0 w-full bg-white border-t border-gray-300 py-2">
           <RouterLink class="text-primary font-bold flex items-center justify-center w-full" :to="{ name: 'home' }">
-              Dashboard
+              Metricas
           </RouterLink>
           <!-- <div class="flex items-center justify-center w-full">
               <img src="/logo.jpg" alt="Logo" class="w-10 h-10 rounded-full" />

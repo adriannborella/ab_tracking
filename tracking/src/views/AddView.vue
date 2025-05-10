@@ -14,6 +14,7 @@
         >
           Nuevo Dato
         </button>
+
       </div>
   
       <!-- Nueva Metrica -->
@@ -26,6 +27,7 @@
         />
         <button
           @click="addValue"
+          :disabled="!newValueName"
           class="bg-blue-600 text-white px-4 py-2 rounded w-full"
         >
           Agregar Metrica
@@ -73,10 +75,33 @@
         />
         <button
           @click="addDataPoint"
+          :disabled="!dataValue && !dataDate"
           class="bg-green-600 text-white px-4 py-2 rounded w-full"
         >
           Agregar Dato
         </button>
+
+
+        <ul v-if="selectedId && trackedValues[selectedId]">
+            <li
+              v-for="{date, value} in trackedValues[selectedId].data"
+              :key="date"
+              class="bg-white rounded-2xl shadow p-4 mb-2 flex">
+                <h2 class="text-lg font-semibold mb-2 flex-2">{{ new Date(date).toLocaleDateString('es-AR') }} - {{ value }}</h2>
+                <button
+                    @click="editRecord(date,value)"
+                    class="bg-yellow-600 text-white px-4 py-2 rounded mr-4"
+                >
+                    Editar
+                </button>
+                <button
+                    @click="store.deleteValueData(selectedId, date)"
+                    class="bg-red-600 text-white px-4 py-2 rounded"
+                >
+                    Eliminar
+                </button>
+            </li>
+        </ul>
       </div>
     </div>
   </template>
@@ -104,6 +129,11 @@
         duration: 2000,
      });
     }
+  }
+
+  function editRecord(date, value) {
+    dataValue.value = value;
+    dataDate.value = date;
   }
   
   const selectedId = ref('')
