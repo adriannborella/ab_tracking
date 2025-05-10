@@ -42,7 +42,7 @@ onMounted(async () => {
           y: {
             beginAtZero: false,
             ticks: {
-              callback: value => `USD ${value}`
+              callback: value => `${value}`
             }
           }
         },

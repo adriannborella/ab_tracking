@@ -9,24 +9,23 @@
     </button>
 
     <!-- Lista de valores -->
-    <div class="space-y-4 mt-2">
-      <div
-        v-if="store.trackedValues === {}"
-        v-for="value, key in store.trackedValues"
-        :key="key"
-        class="bg-white rounded-2xl shadow p-4 mb-2"
+    <div class="space-y-4 mt-2" v-if="Object.keys(store.trackedValues).length > 0">
+      <div        
+      v-for="(value, key) in store.trackedValues"
+      :key="key"
+      class="bg-white rounded-2xl shadow p-4 mb-2"
       >
-        <h2 class="text-lg font-semibold mb-2">{{ key }}</h2>
-        <LineChart :dataPoints="value.data" />
+      <h2 class="text-lg font-semibold mb-2">{{ key }}</h2>
+      <LineChart :dataPoints="value.data" />
       </div>
-      <div
-        v-else
-        class="bg-white rounded-2xl shadow p-4 mb-2 text-center"
-      >
-        <h2 class="text-lg font-semibold mb-2">No hay datos disponibles</h2>
-        <p class="text-gray-500">Agrega una métrica para comenzar a rastrear.</p>   
-        <p class="text-gray-500">Presiona en el boton + en la esquina superior derecha.</p>   
-      </div>
+    </div>
+    <div
+      v-else
+      class="bg-white rounded-2xl shadow p-4 mb-2 text-center"
+    >
+      <h2 class="text-lg font-semibold mb-2">No hay datos disponibles</h2>
+      <p class="text-gray-500">Agrega una métrica para comenzar a rastrear.</p>   
+      <p class="text-gray-500">Presiona en el boton + en la esquina superior derecha.</p>   
     </div>
   </div>
 </template>
