@@ -1,5 +1,6 @@
 <template>
   <div>
+      <notifications />
       <div class="mt-2 p-2">
           <button @click="goBack" class="fixed top-2 left-5 bg-gray-300 rounded-full p-1 w-8 h-8"
               v-if="visibleBackButton">

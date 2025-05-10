@@ -85,6 +85,7 @@
   import { ref } from 'vue'
   import { useTrackingStore } from '@/stores/trackingStore'
   import { storeToRefs } from 'pinia'
+  import { notify } from "@kyvg/vue3-notification";
   
   const store = useTrackingStore()
   const { trackedValues } = storeToRefs(store)
@@ -96,6 +97,12 @@
     if (newValueName.value.trim()) {
       store.addValue(newValueName.value.trim())
       newValueName.value = ''
+      notify({
+        title: "Agregado exitoso",
+        text: "Tu metrica ha sido agregado exitosamente",
+        type: "success",
+        duration: 2000,
+     });
     }
   }
   
@@ -107,8 +114,13 @@
     if (selectedId.value && dataDate.value && dataValue.value != null) {
       store.addDataPoint(selectedId.value, dataDate.value, dataValue.value)
       // Limpieza
-      dataDate.value = ''
       dataValue.value = null
+      notify({
+        title: "Agregado exitoso",
+        text: "Tu dato ha sido agregado exitosamente",
+        type: "success",
+        duration: 2000,
+     });
     }
   }
   
