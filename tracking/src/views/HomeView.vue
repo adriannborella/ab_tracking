@@ -14,9 +14,11 @@
       v-for="(value, key) in store.trackedValues"
       :key="key"
       class="bg-white rounded-2xl shadow p-4 mb-2"
+      @click="$router.push({ name: 'metrica', params: { metrica: key } })"
       >
-      <h2 class="text-lg font-semibold mb-2">{{ key }}</h2>
-      <LineChart :dataPoints="value.data" />
+        <h2 class="text-lg font-semibold mb-2">{{ value.name || key }}</h2>
+        <LineChart v-if="value.data.length !== 0" :metric="value" />
+        <span v-else> Por favor haga click aqui para editar su metrica y cargar nuevos datos</span>
       </div>
     </div>
     <div
@@ -31,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import LineChart from '@/components/LineChart.vue'
 import { useTrackingStore } from '@/stores/trackingStore'
 import { useRouter } from 'vue-router'
@@ -43,4 +45,8 @@ const store = useTrackingStore()
 function addValue() {
   router.push({ name: 'add' })
 }
+
+onMounted(() => {
+  store.standardizeData()
+})
 </script>

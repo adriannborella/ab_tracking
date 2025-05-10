@@ -8,7 +8,15 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
-    },    
+    },
+    {
+      path: '/metrica/:metrica',
+      name: 'metrica',
+      props: (route) => {
+        return { metrica: route.params.metrica };
+      },
+      component: () => import('@/views/MetricaView.vue')
+    }, 
     {
       path: '/add',
       name: 'add',

@@ -12,24 +12,38 @@ export const useTrackingStore = defineStore('tracking', () => {
     }
   }
 
-  function addDataPoint(name, date, value) {
+  function validateMetrica(name) {
     if (trackedValues.value[name]) {
-        // Verifica si la fecha ya existe
-        const existingDataPoint = trackedValues.value[name].data.find(
-            (dataPoint) => dataPoint.date === date
-        )
-        // Si existe, actualiza el valor
-        if (existingDataPoint) {
-            existingDataPoint.value = value
-        } else {
-            // Si no existe, agrega un nuevo punto de datos
-            trackedValues.value[name].data.push({ date, value })
-        }
-        // ordenar los puntos de datos por fecha
-        orderData(name)
+      return true
     } else {
-      console.warn(`Name "${name}" does not exist in trackedValues.`)
-    }    
+        throw new Error(`Name "${name}" does not exist in trackedValues.`)
+    }
+  }
+
+  function saveMetric(name, newValues) {
+    validateMetrica(name)
+
+    trackedValues.value[name] = {
+      ...trackedValues.value[name],
+      ...newValues,
+    }
+  }
+
+  function addDataPoint(name, date, value) {
+    validateMetrica(name)
+    // Verifica si la fecha ya existe
+    const existingDataPoint = trackedValues.value[name].data.find(
+        (dataPoint) => dataPoint.date === date
+    )
+    // Si existe, actualiza el valor
+    if (existingDataPoint) {
+        existingDataPoint.value = value
+    } else {
+        // Si no existe, agrega un nuevo punto de datos
+        trackedValues.value[name].data.push({ date, value })
+    }
+    // ordenar los puntos de datos por fecha
+    orderData(name)
   }
 
   function orderData(name) {
@@ -41,21 +55,30 @@ export const useTrackingStore = defineStore('tracking', () => {
   }
 
   function deleteValue(name) {
-    if (trackedValues.value[name]) {
-      delete trackedValues.value[name]
-    } else {
-      console.warn(`Name "${name}" does not exist in trackedValues.`)
-    }
+    validateMetrica(name)
+    delete trackedValues.value[name]
   }
 
   function deleteValueData(name, date) {
-    if (trackedValues.value[name]) {      
-        trackedValues.value[name].data = trackedValues.value[name].data.filter(
-          (dataPoint) => dataPoint.date !== date
-        )      
-    } else {
-      console.warn(`Name "${name}" does not exist in trackedValues.`)
-    }
+    validateMetrica(name)
+    trackedValues.value[name].data = trackedValues.value[name].data.filter(
+      (dataPoint) => dataPoint.date !== date
+    )      
+  }
+
+  function standardizeData() {
+        trackedValues.value = Object.entries(trackedValues.value).reduce(
+          (acc, [key, value]) => {            
+              acc[key] = {
+                  ...value,
+                key: value.key || key,
+                name: value.name || key,
+                color: value.color || '#2d0da0',
+            }
+            return acc
+        },
+        {}
+    )
   }
 
   // Persistencia automática en Local Storage
@@ -73,6 +96,8 @@ export const useTrackingStore = defineStore('tracking', () => {
     addDataPoint,
     deleteValue,
     deleteValueData,
-    getDataDesc
+    getDataDesc,
+    saveMetric,
+    standardizeData
   }
 })
