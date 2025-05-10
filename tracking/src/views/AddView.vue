@@ -40,7 +40,7 @@
               class="bg-white rounded-2xl shadow p-4 mb-2">
                 <h2 class="text-lg font-semibold mb-2">{{ key }}</h2>
                 <button
-                    @click="store.deleteValue(key)"
+                    @click="deleteMetrica(key)"
                     class="bg-red-600 text-white px-4 py-2 rounded"
                 >
                     Eliminar
@@ -95,7 +95,7 @@
                     Editar
                 </button>
                 <button
-                    @click="store.deleteValueData(selectedId, date)"
+                    @click="deleteData(selectedId, date, value)"
                     class="bg-red-600 text-white px-4 py-2 rounded"
                 >
                     Eliminar
@@ -111,6 +111,7 @@
   import { useTrackingStore } from '@/stores/trackingStore'
   import { storeToRefs } from 'pinia'
   import { notify } from "@kyvg/vue3-notification";
+  import Swal from 'sweetalert2'
   
   const store = useTrackingStore()
   const { trackedValues } = storeToRefs(store)
@@ -129,6 +130,50 @@
         duration: 2000,
      });
     }
+  }
+
+  function deleteMetrica(name) {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: "No podrás revertir esto!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminarlo!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        store.deleteValue(name)
+        notify({
+            title: "Eliminado exitoso",
+            text: "Tu metrica ha sido eliminada exitosamente",
+            type: "success",
+            duration: 2000,
+        });
+      }
+    })
+  }
+
+  function deleteData(name, date, value) {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: "Vas a eliminar el dato del dia " + new Date(date).toLocaleDateString('es-AR') + " con valor " + value,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminarlo!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        store.deleteValueData(name, date)
+        notify({
+            title: "Eliminado exitoso",
+            text: "Tu metrica ha sido eliminada exitosamente",
+            type: "success",
+            duration: 2000,
+        });
+      }
+    })
   }
 
   function editRecord(date, value) {
