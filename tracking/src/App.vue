@@ -36,10 +36,6 @@ import { ref, watch } from 'vue';
 const router = useRouter();
 const visibleBackButton = ref(true);
 
-const selectProfile = () => {
-  console.log("Profile selected");
-};
-
 const goBack = () => {
   router.back();
 };
