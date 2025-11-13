@@ -24,6 +24,10 @@
               Perfil
           </RouterLink>
       </div>
+      <div v-if="showReload && needRefresh" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-blue-600 text-white px-4 py-3 shadow-lg flex items-center gap-3">
+          <span>Nueva versión disponible.</span>
+          <button class="bg-white text-blue-600 px-3 py-1 rounded font-semibold hover:bg-blue-50 transition-colors" @click="reloadApp">Actualizar</button>
+      </div>
   </div>
 </template>
 
@@ -31,14 +35,35 @@
 import { useRouter } from 'vue-router';
 import { ref, watch } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
+import { useRegisterSW } from 'virtual:pwa-register/vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const visibleBackButton = ref(true);
+const showReload = ref(false);
+
+const { needRefresh, updateServiceWorker } = useRegisterSW({
+  immediate: true,
+  onRegisteredSW(_swUrl, registration) {
+    // comprobar cada 60s si hay una nueva versión
+    if (registration) {
+      setInterval(() => {
+        registration.update();
+      }, 60 * 1000);
+    }
+  },
+  onNeedRefresh() {
+    showReload.value = true;
+  },
+});
 
 const goBack = () => {
   router.back();
 };
+
+function reloadApp() {
+  updateServiceWorker();
+}
 
 watch(
   () => router.currentRoute.value.name,

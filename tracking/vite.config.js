@@ -18,6 +18,9 @@ export default defineConfig({
         enabled: false
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
@@ -25,6 +28,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-cache',
+              networkTimeoutSeconds: 3,
             },
           },
           {
@@ -33,6 +37,9 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'asset-cache',
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
             },
           },
           {
