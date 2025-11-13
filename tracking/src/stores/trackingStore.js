@@ -1,10 +1,26 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { db } from '@/firebase/config'
+import { useAuthStore } from './authStore'
+import { useFirebaseStorage } from '@/composables/useFirebaseStorage'
 
 export const useTrackingStore = defineStore('tracking', () => {
-  const trackedValues = ref(
-    JSON.parse(localStorage.getItem('trackedValues') || '{}')
-  )
+  const trackedValues = ref({})
+  const isLoadingFromFirebase = ref(false)
+  let unsubscribeFirestore = null
+  let unwatchFirebase = null
+
+  // Usar composable para manejar guardado en Firebase
+  const { isSaving, lastSaved, saveError, saveToFirebase: saveToFirebaseComposable, saveToFirebaseDebounced } = useFirebaseStorage()
+
+  // Cargar desde localStorage (solo si no hay usuario autenticado)
+  function loadFromLocalStorage() {
+    const stored = localStorage.getItem('trackedValues')
+    if (stored) {
+      trackedValues.value = JSON.parse(stored)
+    }
+  }
 
   function addValue(name) {
     trackedValues.value[name] = {      
@@ -82,7 +98,7 @@ export const useTrackingStore = defineStore('tracking', () => {
   }
 
   function exportToCSV() {
-    // Obtener todo el contenido de localStorage
+    // Obtener todo el contenido de localStorage para otros datos
     const allLocalStorageData = {}
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -94,14 +110,17 @@ export const useTrackingStore = defineStore('tracking', () => {
       }
     }
 
+    // Usar trackedValues.value (puede venir de Firebase o localStorage)
+    const currentTrackedValues = trackedValues.value
+
     let csvContent = ''
 
-    // Sección 1: Metadata de métricas (si existe trackedValues)
-    if (allLocalStorageData.trackedValues && typeof allLocalStorageData.trackedValues === 'object') {
+    // Sección 1: Metadata de métricas
+    if (currentTrackedValues && typeof currentTrackedValues === 'object' && Object.keys(currentTrackedValues).length > 0) {
       csvContent += '=== METADATA DE MÉTRICAS ===\n'
       csvContent += 'Key,Nombre,Color\n'
       
-      Object.entries(allLocalStorageData.trackedValues).forEach(([key, value]) => {
+      Object.entries(currentTrackedValues).forEach(([key, value]) => {
         const name = value.name || key
         const color = value.color || ''
         // Escapar comillas y comas en CSV
@@ -115,12 +134,12 @@ export const useTrackingStore = defineStore('tracking', () => {
     }
 
     // Sección 2: Datos históricos
-    if (allLocalStorageData.trackedValues && typeof allLocalStorageData.trackedValues === 'object') {
+    if (currentTrackedValues && typeof currentTrackedValues === 'object' && Object.keys(currentTrackedValues).length > 0) {
       csvContent += '=== DATOS HISTÓRICOS ===\n'
       
       // Recopilar todas las fechas únicas de todas las métricas
       const allDates = new Set()
-      Object.values(allLocalStorageData.trackedValues).forEach(metric => {
+      Object.values(currentTrackedValues).forEach(metric => {
         if (metric.data && Array.isArray(metric.data)) {
           metric.data.forEach(dataPoint => {
             if (dataPoint.date) {
@@ -135,7 +154,7 @@ export const useTrackingStore = defineStore('tracking', () => {
       
       // Crear mapa de datos por métrica y fecha para acceso rápido
       const dataMap = {}
-      Object.entries(allLocalStorageData.trackedValues).forEach(([key, metric]) => {
+      Object.entries(currentTrackedValues).forEach(([key, metric]) => {
         dataMap[key] = {}
         if (metric.data && Array.isArray(metric.data)) {
           metric.data.forEach(dataPoint => {
@@ -145,10 +164,10 @@ export const useTrackingStore = defineStore('tracking', () => {
       })
       
       // Encabezados: Fecha + nombres de métricas
-      const metricKeys = Object.keys(allLocalStorageData.trackedValues)
+      const metricKeys = Object.keys(currentTrackedValues)
       csvContent += 'Fecha'
       metricKeys.forEach(key => {
-        const metricName = allLocalStorageData.trackedValues[key].name || key
+        const metricName = currentTrackedValues[key].name || key
         csvContent += `,"${String(metricName).replace(/"/g, '""')}"`
       })
       csvContent += '\n'
@@ -387,17 +406,170 @@ export const useTrackingStore = defineStore('tracking', () => {
     })
   }
 
-  // Persistencia automática en Local Storage
-  watch(
+  // Cargar datos desde Firebase
+  async function loadFromFirebase() {
+    const authStore = useAuthStore()
+    if (!authStore.user) return
+
+    try {
+      isLoadingFromFirebase.value = true
+      const userId = authStore.user.uid
+      const docRef = doc(db, 'users', userId)
+      
+      // Usar listener en tiempo real
+      unsubscribeFirestore = onSnapshot(docRef, (docSnap) => {
+        // Establecer bandera antes de actualizar para prevenir loops
+        isLoadingFromFirebase.value = true
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          trackedValues.value = data.trackedValues || {}
+        } else {
+          // Si no existe el documento, crear uno vacío
+          trackedValues.value = {}
+        }
+        
+        isLoadingFromFirebase.value = false
+      }, (error) => {
+        console.error('Error al cargar datos de Firebase:', error)
+        isLoadingFromFirebase.value = false
+      })
+    } catch (error) {
+      console.error('Error al configurar listener de Firebase:', error)
+      isLoadingFromFirebase.value = false
+    }
+  }
+
+  // Guardar en Firebase usando el composable
+  async function saveToFirebase() {
+    const authStore = useAuthStore()
+    if (!authStore.user) return
+
+    try {
+      await saveToFirebaseComposable(
+        { trackedValues: trackedValues.value },
+        'users',
+        authStore.user.uid
+      )
+    } catch (error) {
+      console.error('Error al guardar en Firebase:', error)
+      throw error
+    }
+  }
+
+  // Migrar datos del localStorage a Firebase
+  async function migrateLocalStorageToFirebase() {
+    const authStore = useAuthStore()
+    if (!authStore.user) return
+
+    try {
+      // Obtener datos del localStorage
+      const localData = localStorage.getItem('trackedValues')
+      
+      if (localData) {
+        const parsedLocalData = JSON.parse(localData)
+        
+        // Verificar si hay datos en localStorage
+        if (Object.keys(parsedLocalData).length > 0) {
+          const userId = authStore.user.uid
+          const docRef = doc(db, 'users', userId)
+          
+          // Verificar si ya existen datos en Firebase
+          const docSnap = await getDoc(docRef)
+          
+          // Establecer bandera para prevenir que el watch guarde durante la migración
+          isLoadingFromFirebase.value = true
+          
+          if (docSnap.exists()) {
+            // Si ya hay datos en Firebase, combinarlos con los del localStorage
+            const firebaseData = docSnap.data().trackedValues || {}
+            const mergedData = { ...firebaseData, ...parsedLocalData }
+            
+            trackedValues.value = mergedData
+            await saveToFirebaseComposable(
+              { trackedValues: mergedData },
+              'users',
+              userId
+            )
+          } else {
+            // Si no hay datos en Firebase, usar solo los del localStorage
+            trackedValues.value = parsedLocalData
+            await saveToFirebaseComposable(
+              { trackedValues: parsedLocalData },
+              'users',
+              userId
+            )
+          }
+          
+          // Limpiar localStorage después de la migración
+          localStorage.removeItem('trackedValues')
+          
+          // Restaurar bandera
+          isLoadingFromFirebase.value = false
+          
+          console.log('Migración de datos completada exitosamente')
+        }
+      }
+    } catch (error) {
+      console.error('Error al migrar datos:', error)
+      isLoadingFromFirebase.value = false
+      throw error
+    }
+  }
+
+  // Limpiar datos (al cerrar sesión)
+  function clearData() {
+    trackedValues.value = {}
+    if (unsubscribeFirestore) {
+      unsubscribeFirestore()
+      unsubscribeFirestore = null
+    }
+    if (unwatchFirebase) {
+      unwatchFirebase()
+      unwatchFirebase = null
+    }
+  }
+
+  // Watch para guardar automáticamente (tanto en localStorage como Firebase)
+  // Solo se ejecuta si NO estamos cargando desde Firebase (previene loops)
+  // Usa debounce para evitar múltiples llamadas rápidas
+  unwatchFirebase = watch(
     trackedValues,
-    (val) => {
-      localStorage.setItem('trackedValues', JSON.stringify(val))
+    async (val) => {
+      // Prevenir loops: no guardar si estamos cargando desde Firebase
+      if (isLoadingFromFirebase.value) {
+        return
+      }
+
+      const authStore = useAuthStore()
+      
+      if (authStore.user) {
+        // Si el usuario está autenticado, guardar en Firebase usando el composable con debounce
+        // Esto evita múltiples llamadas cuando hay cambios rápidos
+        await saveToFirebaseDebounced(
+          { trackedValues: trackedValues.value },
+          'users',
+          authStore.user.uid,
+          500 // 500ms de delay
+        )
+      } else {
+        // Si no está autenticado, guardar en localStorage
+        localStorage.setItem('trackedValues', JSON.stringify(val))
+      }
     },
     { deep: true }
   )
 
+  // Cargar datos iniciales desde localStorage
+  loadFromLocalStorage()
+
   return {
     trackedValues,
+    isLoadingFromFirebase,
+    // Estados del composable para acceso desde componentes
+    isSaving,
+    lastSaved,
+    saveError,
     addValue,
     addDataPoint,
     deleteValue,
@@ -406,6 +578,9 @@ export const useTrackingStore = defineStore('tracking', () => {
     saveMetric,
     standardizeData,
     exportToCSV,
-    importFromCSV
+    importFromCSV,
+    loadFromFirebase,
+    migrateLocalStorageToFirebase,
+    clearData
   }
 })

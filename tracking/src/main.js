@@ -6,11 +6,17 @@ import Notifications from '@kyvg/vue3-notification'
 
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/authStore'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(Notifications)
 
-app.mount('#app')
+// Inicializar autenticación antes de montar la app
+const authStore = useAuthStore()
+authStore.initAuth().then(() => {
+  app.mount('#app')
+})

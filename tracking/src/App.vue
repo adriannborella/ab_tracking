@@ -13,18 +13,16 @@
                       </g>
               </svg>
           </button>
+          
           <RouterView />
       </div>
-      <div class="flex justify-around fixed bottom-0 w-full bg-white border-t border-gray-300 py-2">
+      <div class="flex justify-around fixed bottom-0 w-full bg-white border-t border-gray-300 py-2" v-if="authStore.user">
           <RouterLink class="text-primary font-bold flex items-center justify-center w-full" :to="{ name: 'home' }">
               Metricas
           </RouterLink>
-          <!-- <div class="flex items-center justify-center w-full">
-              <img src="/logo.jpg" alt="Logo" class="w-10 h-10 rounded-full" />
-          </div>
-          <RouterLink class="text-primary font-bold flex items-center justify-center w-full" :to="{ name: 'share' }">
-              Compartir
-          </RouterLink> -->
+          <RouterLink class="text-primary font-bold flex items-center justify-center w-full" :to="{ name: 'profile' }">
+              Perfil
+          </RouterLink>
       </div>
   </div>
 </template>
@@ -32,8 +30,10 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { ref, watch } from 'vue';
+import { useAuthStore } from '@/stores/authStore';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const visibleBackButton = ref(true);
 
 const goBack = () => {
@@ -43,11 +43,10 @@ const goBack = () => {
 watch(
   () => router.currentRoute.value.name,
   (newRouteName) => {
-      visibleBackButton.value = newRouteName !== 'home';
+      visibleBackButton.value = newRouteName !== 'home' && newRouteName !== 'login';
   },
   { immediate: true }
 );
-
 </script>
 
 <style scoped>

@@ -27,10 +27,25 @@
         />
         <button
           @click="addValue"
-          :disabled="!newValueName"
-          class="bg-blue-600 text-white px-4 py-2 rounded w-full"
+          :disabled="!newValueName || store.isSaving"
+          class="bg-blue-600 text-white px-4 py-2 rounded w-full disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          Agregar Metrica
+          <span v-if="store.isSaving" class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Guardando...
+          </span>
+          <span v-else-if="showSavedMessage && authStore.user" class="flex items-center">
+            <svg class="mr-2 h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Guardado en Firebase
+          </span>
+          <span v-else>
+            Agregar Metrica
+          </span>
         </button>
 
         <ul>
@@ -107,28 +122,79 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue'
+  import { ref, watch } from 'vue'
   import { useTrackingStore } from '@/stores/trackingStore'
+  import { useAuthStore } from '@/stores/authStore'
   import { storeToRefs } from 'pinia'
   import { notify } from "@kyvg/vue3-notification";
   import Swal from 'sweetalert2'
   
   const store = useTrackingStore()
+  const authStore = useAuthStore()
   const { trackedValues } = storeToRefs(store)
   
   const activeTab = ref('value')
+  const showSavedMessage = ref(false)
   
   const newValueName = ref('')
-  function addValue() {
+  
+  // Observar cambios en lastSaved para mostrar confirmación temporal
+  let savedTimeout = null
+  watch(() => store.lastSaved, (newValue) => {
+    if (newValue && authStore.user && !store.isSaving) {
+      // Mostrar mensaje de confirmación
+      showSavedMessage.value = true
+      
+      // Limpiar timeout anterior si existe
+      if (savedTimeout) {
+        clearTimeout(savedTimeout)
+      }
+      
+      // Ocultar mensaje después de 2 segundos
+      savedTimeout = setTimeout(() => {
+        showSavedMessage.value = false
+      }, 2000)
+    } else {
+      showSavedMessage.value = false
+    }
+  })
+  
+  async function addValue() {
     if (newValueName.value.trim()) {
-      store.addValue(newValueName.value.trim())
+      const metricName = newValueName.value.trim()
+      store.addValue(metricName)
       newValueName.value = ''
-      notify({
-        title: "Agregado exitoso",
-        text: "Tu metrica ha sido agregado exitosamente",
-        type: "success",
-        duration: 2000,
-     });
+      
+      // Si hay usuario autenticado, esperar a que se complete el guardado
+      if (authStore.user) {
+        // Esperar un momento para que el watch detecte el cambio y comience a guardar
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Esperar a que termine de guardar (máximo 5 segundos)
+        const maxWait = 5000
+        const startTime = Date.now()
+        while (store.isSaving && (Date.now() - startTime) < maxWait) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        
+        // Mostrar notificación solo si se guardó exitosamente en Firebase
+        if (!store.saveError) {
+          notify({
+            title: "Agregado exitoso",
+            text: `Tu métrica "${metricName}" ha sido guardada en Firebase`,
+            type: "success",
+            duration: 2000,
+          })
+        }
+      } else {
+        // Si no hay usuario autenticado, mostrar notificación normal
+        notify({
+          title: "Agregado exitoso",
+          text: "Tu metrica ha sido agregado exitosamente",
+          type: "success",
+          duration: 2000,
+        })
+      }
     }
   }
 
