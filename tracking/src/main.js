@@ -16,6 +16,7 @@ app.use(router)
 app.use(Notifications)
 
 // Inicializar autenticación antes de montar la app
+// handleRedirectResult() ahora se llama dentro de initAuth() antes de configurar el listener
 const authStore = useAuthStore()
 authStore.initAuth().then(() => {
   app.mount('#app')
